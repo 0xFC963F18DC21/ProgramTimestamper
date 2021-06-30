@@ -1,7 +1,9 @@
 package net.nergi.programtimestamper;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -15,9 +17,11 @@ public class Main {
             final var process = builder.start();
             final var outThread = new Thread(
                 () -> {
-                    try (var reader = new InputStreamReader(process.getInputStream())) {
+                    try {
+                        final var stream = process.getInputStream();
                         String line = null;
-                        while ((line = readLineUnbuffered(reader)) != null) {
+
+                        while ((line = readLineUnbuffered(stream)) != null) {
                             System.out.printf("[%s %s] %s%n", LocalDate.now(), LocalTime.now(), line);
                         }
                     } catch (Exception e) {
@@ -51,18 +55,18 @@ public class Main {
         return builder;
     }
 
-    private static String readLineUnbuffered(InputStreamReader reader) throws IOException {
-        final var sb = new StringBuilder();
-        int cur = 0;
+    private static String readLineUnbuffered(InputStream stream) throws IOException {
+        final var baos = new ByteArrayOutputStream();
+        int cur;
 
-        while ((cur = reader.read()) != '\n') {
-            if (cur == -1) {
-                return null;
-            }
-
-            sb.append((char) cur);
+        for (cur = stream.read(); cur != '\n' && cur != '\r' && cur != -1; cur = stream.read()) {
+            baos.write(cur);
         }
 
-        return sb.toString();
+        if (cur == -1 && baos.size() == 0) {
+            return null;
+        }
+
+        return baos.toString(Charset.defaultCharset().toString());
     }
 }
